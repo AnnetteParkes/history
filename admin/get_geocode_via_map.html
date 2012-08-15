@@ -5,58 +5,88 @@
     <title>History Admin - Get Geocode via map.html</title>
 	<link rel="stylesheet" href="../inc/css/leaflet.css">
 	<style>
-		#map { height: 400px;}
+		#map {
+			height: 400px;
+		}
+		
+		.a:hover {
+			cursor: pointer;
+			color: steelblue;
+		}
+		
+		#cities input {
+			margin-right: 15px;
+			margin-bottom: 8px;
+		}
 	</style>
 </head>
 <body>
-	<div id="cities"><input type="text" id="geo_lat"/><input type="text" id="geo_lon"/>Quick Links: </div>
+	<div id="cities">Lat: <input type="text" id="geo_lat"/> Lon: <input type="text" id="geo_lon"/>Quick Links: </div>
 	<div id="map"></div>
 	
-	<!-- Attach Leaflet mapping API -->
-	<script src="../inc/js/leaflet.js"></script>
+	<!-- Attach Google Maps API v3 (sensor var allows location detection) -->
+	<script type="text/javascript" src="http://maps.googleapis.com/maps/api/js?sensor=true"></script>
+	<!-- Attach Mapstraction abstraction layer with Google as the map provider -->
+	<script src="http://mapstraction.googlecode.com/svn/trunk/source/mxn.js?(googlev3)"></script>
 	<script src="../inc/js/jquery-1.7.2.min.js"></script>
 	<script>
-		/*jslint browser: true, sloppy: true, white: true, maxerr: 50, indent: 4 */
-		/*global $, L*/
-		$(window).ready(function() {
-			var cities = {
-					"London": {
-						"lat": 51.5,
-						"lon": -0.1
-					},
-					"Vancouver": {
-						"lat": 49.3,
-						"lon": -123.1
-					}
-				},
-				map = new L.Map('map'),
-				apiKey = '40a6c8d43e044fe6b29280aeabbd0a4f',
-				mapStyleId = '997', // fresh map style
-				cloudmadeTiles = new L.TileLayer('http://{s}.tile.cloudmade.com/' + apiKey + '/' + mapStyleId + '/256/{z}/{x}/{y}.png', {"subdomains":['a','b','c']}),
-				openstreetmapTiles = new L.TileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'),
-				mapquestTiles = new L.TileLayer('http://oatile{s}.mqcdn.com/naip/{z}/{x}/{y}.png', {"subdomains":['1','2','3','4'], "maxZoom": 11}),
-				onMapClick = function (e) {
-					$('#geo_lat').val(e.latlng.lat); /* elements available after AJAX merge */
-					$('#geo_lon').val(e.latlng.lng)
-				},
-				plotCity = function () {
-					var geoData = $(this).data('geo');
-					map.setView(new L.LatLng(geoData.lat, geoData.lon), 13);
-				};
-
-			map.addLayer(cloudmadeTiles).on('click', onMapClick);
-			
-			if ($('#geo_lat').val() !== '' && $('#geo_lon').val() !== '') { // load map based on XML fields
-				map.setView(new L.LatLng(parseFloat($('#geo_lat').val()), parseFloat($('#geo_lon').val())), 13);
+	/*jslint browser: true, sloppy: true, white: true, maxerr: 50, indent: 4 */
+	/*global $, L*/
+	$(window).ready(function() {
+		
+		// initialize map
+		var map = new mxn.Mapstraction('map','googlev3');
+		map.addLargeControls();
+		
+		var cities = {
+			"London": {
+				"lat": 51.5,
+				"lon": -0.1
+			},
+			"Vancouver": {
+				"lat": 49.3,
+				"lon": -123.1
 			}
+		};
+		
+		// bind click event to map
+		map.click.addHandler(function(event_name, event_source, event_args) {
+			var p = event_args.location;
+			
+			// add marker in location clicked
+			/* var clickPoint = new mxn.LatLonPoint(p.lat, p.lon);
+			var clickMarker = new mxn.Marker(clickPoint);
+			map.addMarker(clickMarker); */
+		 
+			$('#geo_lat').val(p.lat);
+			$('#geo_lon').val(p.lon);
+		 });
+			
+		if ($('#geo_lat').val() !== '' && $('#geo_lon').val() !== '') { // load map based on XML fields
+			var loadMapPoint = new mxn.LatLonPoint(parseFloat($('#geo_lat').val()), parseFloat($('#geo_lon').val()));
+			map.setCenterAndZoom(loadMapPoint, 13);
+		}
+		
+		// changes map view to city
+		plotCity = function () {
+			var geoData = $(this).data('geo');
+			var plotPoint = new mxn.LatLonPoint(geoData.lat, geoData.lon);
+			map.setCenterAndZoom(plotPoint, 10);
+		};
 
-			$.each(cities, function(city,json) { // build quick links
-				$('<a class="a"/>').
-					text(' ' + city).
-					data('geo',json).
-					click(plotCity).
-					appendTo('#cities');
-			});
+		$.each(cities, function(city,json) { // build quick links
+			$('<a class="a"/>').
+			text(' ' + city).
+			data('geo',json).
+			click(plotCity).
+			appendTo('#cities');
 		});
+		
+		
+		// default position is Vancouver
+		var defaultPoint = new mxn.LatLonPoint(cities.Vancouver.lat, cities.Vancouver.lon);
+		map.setCenterAndZoom(defaultPoint, 10);
+		
+	});
 	</script>
 </body></html>
